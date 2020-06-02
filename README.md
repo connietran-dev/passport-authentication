@@ -1,6 +1,10 @@
 # Sequelize: Reverse Engineering Code
 
-We were tasked with reverse engineering and providing a walkthrough of the codebase for a NodeJS authentication application that utilizes `Sequelize` and `Passport.js`. The following is a walkthrough of how the app functions and of each file's responsibility.
+We were tasked with reverse engineering and providing a walkthrough of the codebase for a NodeJS authentication application that utilizes `Sequelize` and `Passport.js`. The following is a walkthrough of how the app functions and of each file's responsibility. I have added comments to the code, especially around new functionality that has been introduced around:
+
+* Passport.js
+* bcrypt
+* express-session
 
 ## App Functionality
 
@@ -27,7 +31,7 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
     *` express-session` - session middleware for Express
     * `mysql2` - MySQL driver used with Sequelize
     * `passport` - Express-compatible authentication middleware for Node.js
-    * `passport-local` - Passport strategy for authenticating with a username and password
+    * `passport-local` - Passport strategy for authenticating with a local username and password instead of something like authenticating with Google
     * `sequelize` - ORM for Node.JS
 
 
@@ -62,9 +66,14 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 #### Purpose:
 
 * This is the default file created when the Sequelize CLI is run using `npx sequelize-cli init:models`. 
+
 * This file reads the file system of the application with `fs`, interacts with Sequelize, and loads in the configuration of the environment created by package.json.
+
 * This file creates an instance of Sequelize, passes in `config` as an object, and automatically creates a `model` out of any files in the same directory as this file that end in `.js`, such as `user.js`.
+
 * This then loads those objects in memory, and exports these objects. This allows us to `require("./models")` in `server.js`.
+
+* A Model represents a table in the database. Instances of this class represent a database row.
 
 
 ## The Sign Up Process

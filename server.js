@@ -21,15 +21,28 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // We need to use sessions to keep track of our user's login status
-// secret - Secret used to sign the session ID cookie
-// resave - 
-// saveUninitialized: true - Forces a session that is "uninitialized" to be saved to the store
+// session takes the following options:
+
+// secret - Secret used to sign the session ID cookie. A key that we want to keep secret in order to encrypt our information. You can keep this as an environment variable in your .env file and randomly generate characters; or hardcode it, e.g., to something like "keyboard cat"
+// If you choose the former, you can set your environment variables and set them inside process.env at the top of this file as follows:
+// if (process.env.NODE_ENV !== 'production') {
+//   require('dotenv').config()
+// }
+
+// resave - Resaves session variables if nothing has changed
+
+// saveUninitialized - Forces a session that is "uninitialized" to be saved to the store, i.e., saves an empty value if there is no value
+
 app.use(session({ 
   secret: "keyboard cat", 
   resave: true, 
   saveUninitialized: true 
 }));
+
+// Sets up Passport
+// .initialize is a function inside Passport that sets up some basics
 app.use(passport.initialize());
+// Stores variables to persist across the user's session and works with app.use(session({})) above
 app.use(passport.session());
 
 // Requiring our routes
