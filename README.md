@@ -12,16 +12,18 @@ As you read through this README, you may find it helpful to pull up the code alo
 
 ## App Functionality
 
-This is a simple app in which you can sign up, log in, and log out. Whenever you: a) go to the root page `/`, b) go to the URL ending in `/login`, or c) go to the URL ending in `/members`, the application will check whether you already have an account. If you do, you will be taken to the `/members` page.
+This is a simple app in which you can sign up, log in, and log out. Whenever you: a) go to the root page `"/"`, b) go to the URL ending in `/login`, or c) go to the URL ending in `/members`, the application will check whether you already have an account. If you do, you will be taken to the `/members` page.
 
-If you go to the homepage `/` and you are not already authenticated, the app will show you the Sign Up Form page (`/public/signup.html`). On the Sign Up Form, you can enter an email address and password to sign up. If you do not fill out any values, you will be given an error.
+If you go to the homepage `"/"` and you are not already authenticated, the app will show you the Sign Up Form page (`/public/signup.html`). On the Sign Up Form, you can enter an email address and password to sign up. If you do not fill out any values, you will be given an error.
 
 You can click 'Or log in here' link on the Sign Up Form or go directly to the URL ending in `/login`. If you do so, you will be taken to the Login Form where you can enter your email address and password to log in.
 
 Once you have authenticated, you will see a simple page that displays `Welcome ${yourEmailAddress}`. You can also use this page to Logout.
 
 
-## Code Tutorial
+# Code Walkthrough
+
+## General Application Files
 
 ### **package.json**
 
@@ -32,58 +34,76 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 * You can run `npm install` to install the following Node packages required for the application:
     * `bcryptjs` - password hashing function
     * `express` - web framework for Node
-    *` express-session` - session middleware for Express
-    * `mysql2` - MySQL driver used with Sequelize
+    * `express-session` - session middleware for Express
     * `passport` - Express-compatible authentication middleware for Node.js
     * `passport-local` - Passport strategy for authenticating with a local username and password instead of something like authenticating with Google
     * `sequelize` - ORM for Node.JS
+    * `mysql2` - MySQL driver used with Sequelize
 
 
 ### **server.js**
 
 #### Purpose:
+
 * This file requires Express to set up an Express server needed to run the application. 
 
-* `process.env.PORT || 3000` means to run the application on whatever is in the environment variable PORT, f0r example, if you deploy to a server like Heroku, or `8080` if there's nothing there, for example if you run the application locally.
+* `process.env.PORT || 8080` means the application will run on whatever is in the environment variable PORT, for example, for when you deploy to a server like Heroku; OR it will run on 8080 if there's nothing there, for example, if you run the application locally.
 
-* When you initiate the server with `node server.js`, you can view the `index.html` in your browser. You can do this by running `node server.js`. Then go to your browser and go to `localhost:8080`.
+* When you initiate the server with `node server.js`, you can view the application in your browser. You can do this by running `node server.js`, then go to your browser and go to `localhost:8080`.
 
-* Before initiating your server, make sure to create the `passport_demo` database in your local development environment as specified in `config/config.json`. 
 
-    * You can create this database by running the following in your database client (e.g., MySQL Workbench or Navicat) or by using the MySQL CLI:   
-    
-        ```
-        DROP DATABASE IF EXISTS `passport_demo`;
-        CREATE DATABASE `passport_demo`;
-        ```
+### **config/config.json**
+
+#### Purpose:
+
+* Before initiating your server, make sure to create the `passport_demo` database in your local development environment as specified in `config/config.json`.
+
+* Note that in `config.json` the `"dialect"` specified for Sequelize is `"mysql"`. Thus, the database created must be a MySQL database.
+
+* You can create the `passport_demo` database locally by running the following in your database client (e.g., MySQL Workbench or Navicat) or by using the MySQL CLI:   
+
+    ```
+    DROP DATABASE IF EXISTS `passport_demo`;
+    CREATE DATABASE `passport_demo`;
+    ```
+
+* Depending on which environment you are running the application, use the applicable credentials in `config.json` to allow the application access to your database.
 
 
 ### **routes/html-routes.js**
 
 #### Purpose:
 
-* This file uses Express to define routes for common URL requests from the user's browser - for example, the `/` root, `/login`, and `/members`. Whenever there is a request for one of these routes from the browser, this file has code to check whether the user already has an account. If they do, they will be sent to the `/members` page. Otherwise, the app uses `.sendFile` to send the `/signup.html` or `/login.html` files for the `/` root and `/login` respectively. If a user who is not logged in tries to access the `/members` route, they will be redirected to the signup page
+* This file uses Express to define routes for common URL requests from the user's browser - for example, the `"/"` root, `/login`, and `/members`. Whenever there is a request for one of these routes from the browser, this file has code to check whether the user already has an account. 
+
+* If the user has an account, they will be sent to the `/members` page. Otherwise, the app uses `.sendFile` to send the `/signup.html` or `/login.html` files for the `"/"` root and `/login` routes, respectively. 
+
+* If a user who is not logged in tries to access the `/members` route, they will be redirected to the signup page.
 
 
 ### **models/index.js**
 
 #### Purpose:
 
-* This is the default file created when the Sequelize CLI is run using `npx sequelize-cli init:models`. 
+* This is the default file created when the Sequelize CLI (command-line inteface) is run using `npx sequelize-cli init:models` command. 
 
-* This file reads the file system of the application with `fs`, interacts with Sequelize, and loads in the configuration of the environment created by package.json.
+* This `models/index.js`file reads the file system of the application with `fs`, interacts with Sequelize, and loads in the configuration of the environment created by package.json.
 
-* This file creates an instance of Sequelize, passes in `config` as an object, and automatically creates a `model` out of any files in the same directory as this file that end in `.js`, such as `user.js`.
+* This file creates an instance of Sequelize, passes in `config` as an object.
 
-* This then loads those objects in memory, and exports these objects. This allows us to `require("./models")` in `server.js`.
+* The main purpose of this file is to automatically create a `model` out of any files in the same directory as this file that end in `.js`, such as `user.js`. A Model represents a table in the database, e.g., `Users` table in our `passport_demo` database which is created out of `user.js`. Instances of this class, e.g., a `db.User.create` in `api-routes.js` represent a database row.
 
-* A Model represents a table in the database. Instances of this class represent a database row.
+* This file then loads these objects in memory and exports these objects. This allows us to import all models in the `models/` folder into `server.js` with `require("./models")`.
+
 
 
 ## The Sign Up Process
 
+With the general application files laid out, let's track what happens when a user signs up for an account in the browser and walk through the following files:
+
 * public/signup.html 
 * public/js/signup.js 
+* routes/html-routes.js 
 * routes/api-routes.js 
 * models/user.js
 * bcryptjs
@@ -94,29 +114,29 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 
 * Since you have likely not yet made an account and thus, are not authenticated, one of the first pages you see when you come to the site is the Sign Up Form. 
 
-    * If you go to `http://localhost:8080/` after running `node server.js`, the `server.js` file will `.sendFile` the `signup.html` file which the browser renders as the Sign Up Form on the page.
+* If you go to `http://localhost:8080/` after running `node server.js`, the **`routes/html-routes.js`** file will `.sendFile` the `signup.html` file which the browser renders as the Sign Up Form in the browser.
 
 * The **`signup.html`** file is a simple HTML form consisting of `<input>` for the user's email and password required to sign up.
 
-* The **`signup.js`** file uses JQuery to program the behavior of the page on the client side, when the user submits the Sign Up Form.
+* The **`signup.js`** file uses JQuery to program the behavior of the Sign Up page on the client side, when the user submits the Sign Up Form.
 
     * When the user submits the Sign Up Form (`signUpForm.on("submit")`), the app checks `if (!userData.email || !userData.password)` to ensure neither email nor password fields are blank. If they are, the JQuery event is `return`ed early, and an error is shown to the user.
 
     * Otherwise, if there is an email and password populated, the `signUpUser` function is run, and the email and password input fields are set to blank if the `signUpUser` function is successfully run.
 
-    * The `signUpUser` function uses JQuery to POST to the `/api/signup` route with the email and password entered.
+* The `signUpUser` function uses JQuery to POST to the `/api/signup` route with the email and password entered.
 
 * The `/api/signup` route is defined in the **`routes/api-routes.js`** file. The file requires the `../models` file and `../config/passport` file. 
 
-    * When the `/api/signup` route receives a POST from the browser client, the email and password properties on the request body (`req.body`) are passed from the client and are used to create a new User using the User model from `models/user.js`.
+    * When the `/api/signup` route receives a POST from the client (the browser), the email and password properties on the request body (`req.body`) are passed from the client and are used to create a new User using the User model from `models/user.js`.
 
-* The **`models/user.js`** file requires the `bcrypt` package and utilizes `Sequelize` to define the data Model of a new User to interface with the database.
+* The **`models/user.js`** file requires the **`bcryptjs`** package and utilizes `Sequelize` to define the data Model of a new User that will be created in the `passport_demo` database.
 
-* The **`config/config.json`** file specifies configurations for connecting with the database that is created by Sequelize. The file indicates that the dialect and database that is created is MySQL. This file also indicates the credentials and metadata that should be used to connect to the database in each environment - development, test, and production.
+* The **`config/config.json`** file specifies configurations for connecting with the database that is created by Sequelize. The file indicates that the dialect and database that is created in MySQL. This `config.json` file also indicates the credentials and metadata that should be used to connect to the database in each environment - development, test, and production.
 
-    * When creating a new User, the Model in `user.js` indicates the email and password are strings and are required (`allowNull: false`). The email must be a unique and must be a valid email address. These validations are enforced by using the sequelize `DataTypes` and `validate` syntax.
+* When creating a new User, the Model in `models/user.js` indicates the email and password are strings and are required (`allowNull: false`). The email must be a unique and must be a valid email address. These validations are enforced by using the Sequelize `DataTypes` and `validate` syntax.
 
-    * This file also uses what is called a Hooks in Sequelize (also known as lifecycle events), that are functions which are called before and after calls in sequelize are executed. In this file, we use the following method: 
+    * This file also uses what are called Hooks in Sequelize (also known as lifecycle events). Hooks are functions that can be called before and after calls in Squelize are executed. In this `models/user.js` file, we use the following method: 
     
         ```
         User.addHook("beforeCreate"), function(user) {
@@ -124,21 +144,23 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
         });
         ```
 
-    * `User.addHook` uses `bcrypt` to hash the password from the user before storing it in the `passport_demo` database created by Sequelize as indicated in `config.json`. `bcrypt.genSaltSync(10)` specifies how many times to generate the hash and, thus, how secure the password will be. 10 is a fairly common value that will allow the hashing to be quick yet secure.
+    * `User.addHook` uses `bcrypt` to hash the password from the user before storing it in the `passport_demo` database using `.addHook("beforeCreate")`. 
+    
+    * `bcrypt.genSaltSync(10)` specifies how many times to generate the hash and, thus, how secure the password will be. 10 is a fairly common value that will allow the hashing to be quick yet secure. Note that `.hashSync` hashes the password synchronously.
 
-    * Note that `.hashSync` hashes the password synchronously.
+    * In addition, the User Model also defines a custom method on the User model, called `validPassword` that is used to validate the password later on. `validPassword` compares the incoming `password` with `this.password` - the hashed password on the User model object.
 
-    * In addition, the Model also defines a custom method on the User model, called `validPassword` that is used to validate the password later on. `validPassword` compares the incoming `password` with `this.password` which is the hashed password property on the User model object.
+* If creating the User is successful in `api-routes.js`, `.then` the response uses a 307 to temporarily redirect the user to `/api/login`. With a 307, the method and the body of the original request are reused to perform the redirected request. The request in `/api/login` is `passport.authenticate` (explained in detail below). Thus, the user is automatically logged in. Otherwise, a 401 Unauthorized Error is sent to the client.
 
-* If creating the User is successful in `api-routes.js`, `.then` the response uses a 307 to temporarily redirect the user to `/api/login`. With a 307, the method and the body of the original request are reused to perform the redirected request. Thus, the user is automatically logged in. Otherwise, a 401 Unauthorized Error is sent to the client.
+* Back on the client side in `signup.js`, if the POST is successful, `.then`, `window.location.replace("/members")` occurs which is a method off of the Location interface which replaces the current `signup.html` resource with the one at the provided URL - `/members`.
 
-* Back on the client side in `signup.js`, if the POST is successful, `.then`, `window.location.replace("/members")` occurs which is a method off of the Location interface which replaces the current `signup.html` resource with the one at the provided URL, which is `/members`.
+    * The `/members` route is also defined in `html-routes.js`. This route checks if the user `isAuthenticated` by using the file imported by `require("../config/middleware/isAuthenticated")`. 
 
-    * The `/members` route is defined in `html-routes.js`. This route checks if the user `isAuthenticated` by `require("../config/middleware/isAuthenticated")`. 
+* In the **`isAuthenticated.js`** file, a single function is exported and its only purpose is to check if the user is logged in.
 
-* In the **`isAuthenticated.js`** file, a function is exported to check if the user is logged in. If so, the app will continue with the request to the restricted route. If the user isn't logged in, the app will redirect them to the login page. 
+    * This function is only called on the `/members` route. If the user is logged in, the app will continue with the request to the current `/members` route and continue to an anonymous function which `res.sendFile` the `members.html`. If the user isn't logged in, the app will redirect them to the `"/"`, which is the login page as defined in `html-routes.js`. 
 
-    * In the above case, because we are using a 307 temporary redirect, the original request is reused, which allows the user to be automatically logged in.
+    * In the above case, because we are using a 307 temporary redirect from the `/signup` to `/member` route, the email and password in body of the original `signup` request is reused, which allows the user to be automatically logged in.
 
 
 ## The Log In Process
@@ -150,7 +172,6 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 * server.js
 * models/user.js
 * config/passport.js
-
 
 ### Purpose:
 
