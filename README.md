@@ -1,10 +1,14 @@
-# Sequelize: Reverse Engineering Code
+# Sequelize & Passport.js: Reverse Engineering Code
 
-We were tasked with reverse engineering and providing a walkthrough of the codebase for a NodeJS authentication application that utilizes `Sequelize` and `Passport.js`. The following is a walkthrough of how the app functions and of each file's responsibility. I have added comments to the code, especially around new functionality that has been introduced around:
+We were tasked with reverse engineering and providing a walkthrough of the codebase for a NodeJS authentication application that utilizes `Sequelize` and `Passport.js`. The following is a walkthrough of how the app functions and of each file's responsibility. 
 
-* Passport.js
+Throughout the code, I have added comments. These comments center especially around the following new technologies that have been introduced:
+
 * bcrypt
+* Passport.js
 * express-session
+
+As you read through this README, you may find it helpful to pull up the code alongside its description. You can also download the repo, run `npm install` to install dependencies and `npm start` to run the application on http://localhost:8080/ in your browser. I have also added a script so you can run `npm run watch` so the server will refresh automatically if you make changes to the files.
 
 ## App Functionality
 
@@ -82,6 +86,7 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 * public/js/signup.js 
 * routes/api-routes.js 
 * models/user.js
+* bcryptjs
 * config/config.json
 * config/middleware/isAuthenticated.js
 
@@ -134,3 +139,137 @@ Once you have authenticated, you will see a simple page that displays `Welcome $
 * In the **`isAuthenticated.js`** file, a function is exported to check if the user is logged in. If so, the app will continue with the request to the restricted route. If the user isn't logged in, the app will redirect them to the login page. 
 
     * In the above case, because we are using a 307 temporary redirect, the original request is reused, which allows the user to be automatically logged in.
+
+
+## The Log In Process
+
+* public/login.html 
+* public/js/login.js 
+* routes/api-routes.js
+* config/middleware/isAuthenticated.js
+* server.js
+* models/user.js
+* config/passport.js
+
+
+### Purpose:
+
+* When you enter your credentials on the **`public/login.html`** page and click Login, then on submit (`loginForm.on("submit")`), the **`public/js/login.js`** file sends a POST to the `/api/login` route in `api-routes.js`.
+
+* To authenticate in, the `/api/login` route in `api-routes.js` uses `passport.authenticate("local")` to authenticate the request. 
+
+* In an Express-based application such as this, `passport.initialize()` middleware is required to initialize Passport which is used for authentication.([Source](http://www.passportjs.org/docs/authenticate/))  This is declared in **`server.js`**. 
+
+ * If `passport.authenticate` is successful, then the server sends back `res.json(req.user)` with the user's information from the request in `api-routes.js`.
+
+* Back on the client side in `login.js`, the window is replaced with the `/members` route with `window.location.replace("/members")`.
+
+* If your application uses persistent login sessions, `passport.session()` middleware must also be used. ([Source](http://www.passportjs.org/docs/authenticate/)) This is also declared in **`server.js`** for the application.
+
+
+### Passport.js Authentication
+
+* Passport uses what are termed strategies to authenticate requests. Strategies range from verifying a username and password, delegated authentication using OAuth or federated authentication using OpenID.
+
+    Before asking Passport to authenticate a request, the strategy (or strategies) used by an application must be configured. ([Source](http://www.passportjs.org/docs/authenticate/))
+
+* This application the `"local"` strategy which asks the user for their username (email address) and password instead of authenticating with something like Google.
+
+* Passport.js is configured by setting up **`config/passport.js`**. In this configuration, we tell Passport we want to `passport.use(new LocalStrategy`), a Local Strategy, by using `require("passport-local").Strategy`.
+
+* In this `new LocalStrategy`, we define the `usernameField` to be the email so that email is required to sign in rather than username.
+
+    * We also define an anonymous function on this `new LocalStrategy` to run when the user tries to sign in. This function authenticates the user by using Sequelize to find a user `WHERE` the email matches. If it is correct, we return the user and continue with the request for the `api/login` route.
+
+    * In addition: Strategies require what is known as a verify callback. The purpose of a verify callback is to find the user that possesses a set of credentials. 
+    
+        When Passport authenticates a request, it parses the credentials contained in the request. It then invokes the verify callback with those credentials as arguments, in this case username and password. If the credentials are valid, the verify callback invokes `done` to supply Passport with the user that authenticated: 
+        
+        `return done(null, user);`.
+
+        If the credentials are not valid (for example, if the password is incorrect), `done` should be invoked with `false` instead of a `user` to indicate an authentication failure.
+
+        `return done(null, false);`
+
+        An additional info message can be supplied to indicate the reason for the failure. This is useful for displaying a flash message prompting the user to try again.
+
+        `return done(null, false, { message: 'Incorrect password.' });`
+
+        (Source: http://www.passportjs.org/docs/authenticate/)
+
+## User Sessions with `express-session`
+
+* HTTP is stateless; in order to associate a request to any other request, you need a way to store user data between HTTP requests. Cookies and URL parameters [so, not sessions] are both suitable ways to transport data between the client and the server. But they are both readable and on the client side. ([Source](https://www.tutorialspoint.com/expressjs/expressjs_sessions.htm#:~:text=ExpressJS%20%2D%20Sessions,and%20on%20the%20client%20side))
+
+* Sessions solve exactly this problem. You assign the client (the browser) an ID and it makes all further requests using that ID. Information associated with the client is stored on the server linked to this ID. ([Source](https://www.tutorialspoint.com/expressjs/expressjs_sessions.htm#:~:text=ExpressJS%20%2D%20Sessions,and%20on%20the%20client%20side))
+
+* Thus, we use `express-session` in this application to achieve sessions. This `express-session` middleware handles all things for us:
+
+    * Creating the session,
+    * Setting the session cookie, and
+    * Creating the session object in `req` object. 
+
+* Whenever we make a request from the same client again, we will have their session information stored with us (given that the server was not restarted). ([Source](https://www.tutorialspoint.com/expressjs/expressjs_sessions.htm#:~:text=ExpressJS%20%2D%20Sessions,and%20on%20the%20client%20side))
+
+* Note that enabling session support with Passport is entirely optional, though it is recommended for most applications. (Source: http://www.passportjs.org/docs/authenticate/)
+
+* We need to use sessions to keep track of our user's login status. After successful authentication, Passport will establish a persistent login session. This is useful for the common scenario of users accessing a web application via a browser ([Source](http://www.passportjs.org/docs/authenticate/)). This is enabled in our application in **`server.js`** with:
+
+    ```
+    app.use(session({ 
+    secret: "keyboard cat", 
+    resave: true, 
+    saveUninitialized: true 
+    }));
+    ```
+
+* In a typical web application, the credentials used to authenticate a user will only be transmitted during the login request. If authentication succeeds, a session will be established and maintained via a cookie set in the user's browser.
+
+    Each subsequent request will not contain credentials, but rather the unique cookie that identifies the session. In order to support login sessions, Passport will serialize and deserialize user instances to and from the session. ([Source](http://www.passportjs.org/docs/authenticate/))
+
+* In the `passport.js` file, `passport.serializeUser` and `passport.deserializeUser` are used to specify the user data that will be stored inside the session.
+
+    * Specifically, `serializeUser` is called on the login request. If the login is successful, then it decides what user information should get stored in the session and a cookie is sent to the browser for the same to maintain the session. ([Source](https://stackoverflow.com/questions/28691215/when-is-the-serialize-and-deserialize-passport-method-called-what-does-it-exact)). 
+    
+    * In `passport.js`, this serialization is achieved as follows:
+
+        ```
+        passport.serializeUser(function (user, cb) {
+        // null is the error
+        // Otherwise, the user is passed into our done function to save the user in the session
+        cb(null, user);
+        });
+        ```
+
+    * In this example [above], only the user ID is serialized to the session, keeping the amount of data stored within the session small. When subsequent requests are received, this ID is used to find the user, which will be restored to `req.user`. ([Source](http://www.passportjs.org/docs/authenticate/))
+
+* When the login operation completes, `user` will be assigned to `req.user`. 
+
+* This `req.user` is later used in each route in `html-routes.js` to check if the user has been authenticated. If so, they are redirected to /members with `res.redirect("/members")`:
+
+    ```
+    app.get("/", function(req, res) {
+        // If the user already has an account send them to the members page
+        if (req.user) {
+        res.redirect("/members");
+        }
+        // Otherwise, send signup.html
+        res.sendFile(path.join(__dirname, "../public/signup.html"));
+    });
+    ```
+
+
+### Improvements to the Login Process:
+
+* In the response from `app.post("/api/login")`, the `req.user` is returned, sending back the hashed password to the client. Although the window refreshes with `window.location.replace("/members")` in `signup.js`, sensitive data, such as the password, should not be sent to the client. 
+
+* Express comes with a built-in session store called `MemoryStore`. This is the default when you don’t specify one explicitly as happens (actually, doesn't happen) in `server.js`. However, using MemoryStore in RAM will leak memory under most conditions, does not scale past a single process, and is meant for debugging and developing. Instead, in production, session data can be stored in a database or encrypted cookie storage. More information on how you can do this with a Redis backend can be found in the article [here](https://medium.com/mtholla/managing-node-js-express-sessions-with-redis-94cd099d6f2f). You can also use the NPM package, `express-mysql-session`.
+
+* There is potential to also protect API endpoints in the application by also using Passport.js. Here is an example from [Passport.js](http://www.passportjs.org/docs/basic-digest/):
+    ```
+    app.get('/api/me',
+    passport.authenticate('basic', { session: false }),
+    function(req, res) {
+        res.json(req.user);
+    });
+    ```

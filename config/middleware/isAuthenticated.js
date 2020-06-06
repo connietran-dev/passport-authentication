@@ -3,6 +3,7 @@
 // next is the function that is run after the check is finished
 module.exports = function(req, res, next) {
   // If the user is logged in (returns true), continue with next and continue with the request in api-routes.js to the restricted route
+  console.log("req.user in isAuthenticated: ", req.user);
   if (req.user) {
     return next();
   }

@@ -51,7 +51,7 @@ passport.use(new LocalStrategy(
 // Just consider this part boilerplate needed to make it all work
 passport.serializeUser(function (user, cb) {
   // null is the error
-  // Otherwise, the user is pass into our done function to save the user in the session
+  // Otherwise, the user is passed into our done function to save the user in the session
   cb(null, user);
 });
 
